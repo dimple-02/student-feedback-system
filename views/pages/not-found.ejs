@@ -1,0 +1,20 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Page not found</p>
+      <h1>We could not find that page</h1>
+      <p class="muted">The link might be broken or the page was moved.</p>
+    </div>
+  </header>
+
+  <div class="card">
+    <span class="card-meta">Navigation</span>
+    <p class="muted" id="notFoundHint"></p>
+    <div class="actions">
+      <button class="button" type="button" id="notFoundPrimary"></button>
+      <button class="button ghost" type="button" id="notFoundBack">Go back</button>
+    </div>
+  </div>
+</section>
+<%- include("../partials/scripts") %>

@@ -1,0 +1,27 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<section class="auth-shell">
+  <form id="adminSetupForm" class="card auth-card">
+    <div>
+      <p class="eyebrow">Admin setup</p>
+      <span class="card-meta">Local access</span>
+      <h1>Create a local admin account</h1>
+      <p class="muted">This is for demos only. Accounts are stored in this browser.</p>
+    </div>
+
+    <label class="field">
+      <span>Email</span>
+      <input id="setupEmail" type="email" placeholder="admin@school.edu" required />
+    </label>
+    <label class="field">
+      <span>Password</span>
+      <input id="setupPassword" type="password" placeholder="At least 6 characters" required />
+    </label>
+
+    <p class="error-text" id="setupError" hidden></p>
+    <p class="muted" id="setupSuccess" hidden></p>
+
+    <button class="button" type="submit">Create admin account</button>
+    <button type="button" class="button ghost" id="backToLoginButton">Back to login</button>
+  </form>
+</section>
+<%- include("../partials/scripts") %>

@@ -1,0 +1,133 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<% const isAdminView = pageKey === "feedback-admin"; %>
+<% if (isAdminView) { %>
+<div class="app-shell">
+  <%- include("../partials/navbar") %>
+  <main class="app-content">
+<% } %>
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Feedback</p>
+      <h1><%= isAdminView ? "Review anonymous submissions" : "Share anonymous feedback" %></h1>
+      <p class="muted"><%= isAdminView ? "Filter, export, and review student sentiment." : "Your name is never collected. Focus on the course or teacher." %></p>
+    </div>
+    <% if (isAdminView) { %>
+      <div class="hero-stat">
+        <p class="hero-label">Total entries</p>
+        <p class="hero-value" id="feedbackTotalCount">0</p>
+        <p class="hero-sub">Stored locally in this browser</p>
+      </div>
+    <% } %>
+  </header>
+
+  <% if (isAdminView) { %>
+    <div class="action-row">
+      <div class="filters">
+        <label class="field compact wide">
+          <span>Keyword</span>
+          <input id="filterKeyword" placeholder="Search course, teacher, message" />
+        </label>
+        <label class="field compact">
+          <span>Course or teacher</span>
+          <select id="filterCourse"></select>
+        </label>
+        <label class="field compact">
+          <span>Min rating</span>
+          <select id="filterMinRating"></select>
+        </label>
+        <label class="field compact">
+          <span>Max rating</span>
+          <select id="filterMaxRating"></select>
+        </label>
+        <label class="field compact">
+          <span>Start date</span>
+          <input id="filterStartDate" type="date" />
+        </label>
+        <label class="field compact">
+          <span>End date</span>
+          <input id="filterEndDate" type="date" />
+        </label>
+      </div>
+      <div class="actions">
+        <button class="button secondary" type="button" id="exportCsvButton">Export CSV</button>
+        <button class="button ghost" type="button" id="seedDataButton">Seed demo data</button>
+        <button class="button ghost" type="button" id="clearFiltersButton">Clear filters</button>
+        <button class="button danger" type="button" id="clearAllFeedbackButton">Clear all</button>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="grid-2">
+    <form id="feedbackForm" class="card form">
+      <div class="card-head">
+        <h2 class="card-title">Submit anonymous feedback</h2>
+        <span class="card-meta">Student form</span>
+      </div>
+
+      <label class="field">
+        <span>Course or teacher</span>
+        <input id="feedbackCourse" placeholder="Math 201 or Ms. Rivera" required />
+      </label>
+
+      <label class="field">
+        <span>Feedback message</span>
+        <textarea id="feedbackMessage" placeholder="Share what stood out and what could improve." rows="4" required></textarea>
+      </label>
+
+      <label class="field">
+        <span>Rating</span>
+        <select id="feedbackRating"></select>
+      </label>
+
+      <button class="button" type="submit">Submit feedback</button>
+    </form>
+
+    <% if (isAdminView) { %>
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">All feedback</h2>
+            <p class="muted" id="feedbackShowingText">Showing 0 of 0 entries.</p>
+          </div>
+          <span class="card-meta">Admin view</span>
+          <label class="field compact">
+            <span>Sort</span>
+            <select id="feedbackSort">
+              <option value="recent">Most recent</option>
+              <option value="rating">Highest rating</option>
+            </select>
+          </label>
+        </div>
+        <div class="feedback-list" id="feedbackList"></div>
+      </div>
+    <% } else { %>
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">What happens next</h2>
+          <span class="card-meta">Student info</span>
+        </div>
+        <p class="muted">Submissions are anonymous. Admins review trends and feedback to improve course experiences.</p>
+        <div class="actions">
+          <a class="button ghost" href="/admin/setup">Admin setup</a>
+        </div>
+        <ul class="list">
+          <li class="list-row">
+            <span class="list-title">Anonymous by default</span>
+            <span class="pill">No names saved</span>
+          </li>
+          <li class="list-row">
+            <span class="list-title">Reviewed weekly</span>
+            <span class="pill">Admin team</span>
+          </li>
+        </ul>
+      </div>
+    <% } %>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+</section>
+<% if (isAdminView) { %>
+  </main>
+</div>
+<% } %>
+<%- include("../partials/scripts") %>

@@ -1,0 +1,66 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<section class="page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Contact</p>
+      <h1>Get in touch with the team</h1>
+      <p class="muted">Send feedback, report an issue, or ask a question about the platform.</p>
+    </div>
+  </header>
+
+  <div class="grid-2">
+    <form id="contactForm" class="card form">
+      <div class="card-head">
+        <h2 class="card-title">Contact support</h2>
+        <span class="card-meta">Support</span>
+      </div>
+
+      <label class="field">
+        <span>Name</span>
+        <input id="contactName" placeholder="Jordan Lee" required />
+      </label>
+
+      <label class="field">
+        <span>Email</span>
+        <input id="contactEmail" type="email" placeholder="teacher@school.edu" required />
+      </label>
+
+      <label class="field">
+        <span>Topic</span>
+        <select id="contactTopic">
+          <option>General question</option>
+          <option>Report a bug</option>
+          <option>Feature request</option>
+          <option>Data or privacy</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Message</span>
+        <textarea id="contactMessage" placeholder="Share as much detail as you can." rows="5" required></textarea>
+      </label>
+
+      <button class="button" type="submit">Send message</button>
+    </form>
+
+    <div class="card">
+      <div class="card-head">
+        <h2 class="card-title">Support hours</h2>
+        <span class="card-meta">Availability</span>
+      </div>
+      <p class="muted">Our team replies Monday to Friday, 9:00 AM to 5:00 PM local time.</p>
+      <div class="list">
+        <div class="list-row">
+          <span class="list-title">Response time</span>
+          <span class="pill">Within 2 days</span>
+        </div>
+        <div class="list-row">
+          <span class="list-title">Priority issues</span>
+          <span class="pill">Same day</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+</section>
+<%- include("../partials/scripts") %>

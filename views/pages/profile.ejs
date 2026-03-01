@@ -1,0 +1,32 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<div class="app-shell">
+  <%- include("../partials/navbar") %>
+  <main class="app-content">
+    <section class="page">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Admin profile</p>
+          <h1>Account overview</h1>
+          <p class="muted">Manage access to anonymous feedback insights.</p>
+        </div>
+      </header>
+
+      <div class="grid-2">
+        <div class="card">
+          <span class="card-meta">Admin</span>
+          <h2 class="card-title">Signed in as</h2>
+          <p class="big-text" id="profileEmail">Admin</p>
+          <p class="muted">Admin access is local to this browser.</p>
+        </div>
+
+        <div class="card">
+          <span class="card-meta">Recent</span>
+          <h2 class="card-title">Recent feedback</h2>
+          <ul class="list" id="profileRecentFeedback"></ul>
+          <p class="muted" id="profileRecentEmpty" hidden>No feedback submissions yet.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<%- include("../partials/scripts") %>

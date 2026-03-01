@@ -1,0 +1,27 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<section class="auth-shell">
+  <form id="loginForm" class="card auth-card">
+    <div>
+      <p class="eyebrow">Admin access</p>
+      <span class="card-meta">Secure</span>
+      <h1>Log in to the teacher dashboard</h1>
+      <p class="muted">View anonymous feedback and analytics.</p>
+    </div>
+
+    <label class="field">
+      <span>Email</span>
+      <input id="loginEmail" type="email" placeholder="admin@school.edu" required />
+    </label>
+    <label class="field">
+      <span>Password</span>
+      <input id="loginPassword" type="password" placeholder="••••••••" required />
+    </label>
+
+    <p class="error-text" id="loginError" hidden></p>
+    <p class="muted">Admin accounts are stored only in this browser.</p>
+
+    <button class="button" type="submit">Log in</button>
+    <button type="button" class="button ghost" id="goSetupButton">Create local admin account</button>
+  </form>
+</section>
+<%- include("../partials/scripts") %>

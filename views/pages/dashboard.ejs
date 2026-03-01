@@ -1,0 +1,61 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<div class="app-shell">
+  <%- include("../partials/navbar") %>
+  <main class="app-content">
+    <section class="page">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Overview</p>
+          <h1>Anonymous feedback at a glance</h1>
+          <p class="muted">Track sentiment trends, top courses or teachers, and new submissions.</p>
+        </div>
+        <div class="hero-stat">
+          <p class="hero-label">Average rating</p>
+          <p class="hero-value" id="dashboardAvgRating">0</p>
+          <p class="hero-sub" id="dashboardAvgSubtitle">Across 0 responses</p>
+        </div>
+      </header>
+
+      <div class="grid-3">
+        <div class="card">
+          <span class="card-meta">All time</span>
+          <h2 class="card-title">Total feedback</h2>
+          <p class="big-text" id="dashboardTotalFeedback">0</p>
+          <p class="muted">All-time submissions captured.</p>
+        </div>
+        <div class="card">
+          <span class="card-meta">Distinct</span>
+          <h2 class="card-title">Active courses</h2>
+          <p class="big-text" id="dashboardActiveCourses">0</p>
+          <p class="muted">Distinct courses with feedback.</p>
+        </div>
+        <div class="card">
+          <span class="card-meta">Leaders</span>
+          <h2 class="card-title">Top courses or teachers</h2>
+          <ul class="list" id="dashboardTopCourses"></ul>
+          <p class="muted" id="dashboardTopCoursesEmpty" hidden>No courses yet. Add feedback to begin.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <span class="card-meta">Recent</span>
+          <h2 class="card-title">Latest feedback</h2>
+          <ul class="list" id="dashboardRecentFeedback"></ul>
+          <p class="muted" id="dashboardRecentEmpty" hidden>Nothing here yet.</p>
+        </div>
+        <div class="card">
+          <span class="card-meta">Admin tools</span>
+          <h2 class="card-title">Quick actions</h2>
+          <p class="muted" id="dashboardLast7">0 feedback entries in the last 7 days.</p>
+          <div class="actions">
+            <button class="button secondary" type="button" id="dashboardSeedButton">Seed demo data</button>
+            <button class="button danger" type="button" id="dashboardClearAllButton">Clear all feedback</button>
+          </div>
+        </div>
+      </div>
+      <div class="toast" id="toast" hidden></div>
+    </section>
+  </main>
+</div>
+<%- include("../partials/scripts") %>

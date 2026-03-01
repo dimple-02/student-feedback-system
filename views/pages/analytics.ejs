@@ -1,0 +1,67 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<div class="app-shell">
+  <%- include("../partials/navbar") %>
+  <main class="app-content">
+    <section class="page">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Analytics</p>
+          <h1>Understand feedback patterns</h1>
+          <p class="muted">Spot highs, dips, and overall sentiment.</p>
+        </div>
+      </header>
+
+      <div class="grid-2">
+        <div class="card">
+          <span class="card-meta">Snapshot</span>
+          <h2 class="card-title">Total feedback</h2>
+          <p class="big-text" id="analyticsTotal">0</p>
+          <p class="muted">All responses collected to date.</p>
+        </div>
+        <div class="card">
+          <span class="card-meta">Snapshot</span>
+          <h2 class="card-title">Average rating</h2>
+          <p class="big-text" id="analyticsAverage">0</p>
+          <p class="muted">Based on a 5-point scale.</p>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Rating distribution</h2>
+            <p class="muted">Compare sentiment at a glance.</p>
+          </div>
+          <span class="card-meta">Distribution</span>
+        </div>
+        <div class="chart">
+          <svg viewBox="0 0 320 140" role="img" aria-label="Ratings bar chart" id="analyticsBarSvg"></svg>
+        </div>
+        <div class="bars" id="analyticsRatingBars"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Recent rating trend</h2>
+            <p class="muted" id="analyticsTrendLabel">Last 0 submissions.</p>
+          </div>
+          <span class="card-meta">Trend</span>
+        </div>
+        <div class="chart" id="analyticsTrendChart"></div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Top courses or teachers</h2>
+            <p class="muted">Most feedback collected by course or teacher.</p>
+          </div>
+          <span class="card-meta">Leaders</span>
+        </div>
+        <div class="bars" id="analyticsCourseBars"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<%- include("../partials/scripts") %>
