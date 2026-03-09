@@ -59,6 +59,7 @@
   <% } %>
 
   <div class="grid-2">
+    <% if (!isAdminView) { %>
     <form id="feedbackForm" class="card form">
       <div class="card-head">
         <h2 class="card-title">Submit anonymous feedback</h2>
@@ -82,6 +83,7 @@
 
       <button class="button" type="submit">Submit feedback</button>
     </form>
+    <% } %>
 
     <% if (isAdminView) { %>
       <div class="card">
