@@ -325,11 +325,13 @@ const initFeedbackPage = () => {
   const page = document.body.dataset.page;
   const isAdminView = page === "feedback-admin";
 
-  if (!form || !courseInput || !messageInput || !ratingSelect) return;
+  if (!isAdminView && (!form || !courseInput || !messageInput || !ratingSelect)) return;
 
-  ratingSelect.innerHTML = [5, 4, 3, 2, 1]
-    .map((value) => `<option value="${value}">${value}</option>`)
-    .join("");
+  if (ratingSelect) {
+    ratingSelect.innerHTML = [5, 4, 3, 2, 1]
+      .map((value) => `<option value="${value}">${value}</option>`)
+      .join("");
+  }
 
   let feedbacks = getFeedbacks();
 
@@ -440,34 +442,36 @@ const initFeedbackPage = () => {
     });
   };
 
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
+  if (form && courseInput && messageInput && ratingSelect) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
 
-    const course = courseInput.value.trim();
-    const message = messageInput.value.trim();
-    const rating = Number(ratingSelect.value);
+      const course = courseInput.value.trim();
+      const message = messageInput.value.trim();
+      const rating = Number(ratingSelect.value);
 
-    if (!course || !message) {
-      showToast("Please fill all required fields.");
-      return;
-    }
+      if (!course || !message) {
+        showToast("Please fill all required fields.");
+        return;
+      }
 
-    const newFeedback = {
-      id: Date.now(),
-      name: "Anonymous",
-      course,
-      message,
-      rating,
-      createdAt: new Date().toISOString()
-    };
+      const newFeedback = {
+        id: Date.now(),
+        name: "Anonymous",
+        course,
+        message,
+        rating,
+        createdAt: new Date().toISOString()
+      };
 
-    feedbacks = [newFeedback, ...feedbacks];
-    saveFeedbacks(feedbacks);
-    showToast("Feedback saved successfully.");
-    form.reset();
-    ratingSelect.value = "5";
-    renderFeedbackList();
-  });
+      feedbacks = [newFeedback, ...feedbacks];
+      saveFeedbacks(feedbacks);
+      showToast("Feedback saved successfully.");
+      form.reset();
+      ratingSelect.value = "5";
+      renderFeedbackList();
+    });
+  }
 
   if (isAdminView) {
     [sortSelect, courseFilter, minRating, maxRating, startDate, endDate, keywordInput].forEach((element) => {
