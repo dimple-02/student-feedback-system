@@ -1,28 +1,23 @@
 <%- include("../partials/head", { title, pageKey }) %>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <section class="auth-shell">
-  <form id="loginForm" class="card auth-card">
+  <form id="studentLoginForm" class="card auth-card">
     <div>
-      <p class="eyebrow">Admin access</p>
+      <p class="eyebrow">Student access</p>
       <span class="card-meta">Secure</span>
-      <h1>Log in to the teacher dashboard</h1>
-      <p class="muted">View anonymous feedback and analytics.</p>
+      <h1>Log in to give feedback</h1>
+      <p class="muted">You must use your chitkara.edu.in email address.</p>
     </div>
 
     <label class="field">
       <span>Email</span>
-      <input id="loginEmail" type="email" placeholder="admin@school.edu" required />
-    </label>
-    <label class="field">
-      <span>Password</span>
-      <input id="loginPassword" type="password" placeholder="••••••••" required />
+      <input id="studentLoginEmail" type="email" placeholder="student@chitkara.edu.in" required />
     </label>
 
-    <p class="error-text" id="loginError" hidden></p>
+    <p class="error-text" id="studentLoginError" hidden></p>
 
-    <button class="button" type="submit" style="margin-bottom: 1rem;">Log in with Email</button>
-    <button type="button" class="button ghost" id="goSetupButton">Create admin account</button>
-
+    <button class="button" type="submit" style="margin-bottom: 1rem;">Continue with Email</button>
+    
     <div style="display: flex; align-items: center; justify-content: center; margin: 1rem 0;">
       <span style="flex: 1; border-bottom: 1px solid var(--border-color);"></span>
       <span style="padding: 0 10px; color: var(--text-muted); font-size: 0.875rem;">OR</span>
