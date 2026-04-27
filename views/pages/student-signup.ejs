@@ -1,0 +1,35 @@
+<%- include("../partials/head", { title, pageKey }) %>
+<section class="auth-shell">
+  <form id="studentSignupForm" class="card auth-card">
+    <div>
+      <p class="eyebrow">Student access</p>
+      <span class="card-meta">Secure</span>
+      <h1>Register to give feedback</h1>
+      <p class="muted">You must use your chitkara.edu.in email address.</p>
+    </div>
+
+    <label class="field">
+      <span>Email</span>
+      <input id="studentSignupEmail" type="email" placeholder="student@chitkara.edu.in" required />
+    </label>
+
+    <label class="field">
+      <span>Password</span>
+      <input id="studentSignupPassword" type="password" placeholder="At least 6 characters" required />
+    </label>
+
+    <label class="field">
+      <span>Profile Picture (Optional)</span>
+      <input id="studentSignupPic" type="file" accept="image/*" />
+    </label>
+
+    <p class="error-text" id="studentSignupError" hidden></p>
+    <p class="muted" id="studentSignupSuccess" hidden></p>
+
+    <button class="button" type="submit" style="margin-bottom: 1rem;">Register Account</button>
+    <div style="text-align: center;">
+      <a href="/" class="button ghost">Back to Login</a>
+    </div>
+  </form>
+</section>
+<%- include("../partials/scripts") %>

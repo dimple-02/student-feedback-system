@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
+import multer from "multer";
 import Feedback from "./models/Feedback.js";
 import User from "./models/User.js";
 
@@ -18,6 +19,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/uploads/')
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+const upload = multer({ storage: storage });
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
@@ -43,6 +55,10 @@ app.get("/", (req, res) => {
   renderPage(res, "student-login", { currentPath: "/", pageKey: "student-login" });
 });
 
+app.get("/student/signup", (req, res) => {
+  renderPage(res, "student-signup", { currentPath: "/student/signup", pageKey: "student-signup" });
+});
+
 app.get("/feedback", (req, res) => {
   renderPage(res, "feedback", { currentPath: "/feedback", pageKey: "feedback-student" });
 });
@@ -55,9 +71,7 @@ app.get("/admin/login", (req, res) => {
   renderPage(res, "login", { currentPath: "/admin/login", pageKey: "login" });
 });
 
-app.get("/admin/setup", (req, res) => {
-  renderPage(res, "admin-setup", { currentPath: "/admin/setup", pageKey: "admin-setup" });
-});
+
 
 const requireAuth = (req, res, next) => {
   const token = req.cookies.adminToken;
@@ -90,37 +104,69 @@ app.get("/admin/profile", requireAuth, (req, res) => {
 // --- API ROUTES ---
 
 // Auth APIs
-app.post("/api/auth/setup", async (req, res) => {
+
+app.post("/api/auth/student-signup", upload.single('profilePic'), async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (email.endsWith("@chitkara.edu.in")) return res.status(400).json({ error: "Students cannot be admins." });
-    
+    const profilePic = req.file ? `/uploads/${req.file.filename}` : "";
+
+    if (!email.endsWith("@chitkara.edu.in")) {
+      return res.status(400).json({ error: "Only @chitkara.edu.in emails are allowed." });
+    }
+
     const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ error: "User already exists." });
+    if (existing) {
+      return res.status(400).json({ error: "User already exists." });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ email, password: hashedPassword });
+    const user = new User({ email, password: hashedPassword, role: "student", profilePic });
     await user.save();
+    
     res.status(201).json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
 });
 
+app.post("/api/auth/student-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email.endsWith("@chitkara.edu.in")) {
+      return res.status(400).json({ error: "Only @chitkara.edu.in emails are allowed." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || user.role !== "student") {
+      return res.status(400).json({ error: "Invalid credentials or account does not exist." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    res.json({ success: true, role: "student", email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (email.endsWith("@chitkara.edu.in")) return res.status(400).json({ error: "Students cannot be admins." });
     
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "Invalid credentials" });
+    if (user.role !== "admin" && user.role !== "teacher") return res.status(403).json({ error: "Access denied. Not an admin or teacher." });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
     res.cookie("adminToken", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
-    res.json({ success: true, email: user.email });
+    res.json({ success: true, email: user.email, role: user.role });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -129,6 +175,12 @@ app.post("/api/auth/login", async (req, res) => {
 app.post("/api/auth/logout", (req, res) => {
   res.clearCookie("adminToken");
   res.json({ success: true });
+});
+
+// A simple GET route so you can forcefully logout by visiting the URL
+app.get("/logout", (req, res) => {
+  res.clearCookie("adminToken");
+  res.redirect("/admin/login");
 });
 
 app.post("/api/auth/google", async (req, res) => {
@@ -141,29 +193,29 @@ app.post("/api/auth/google", async (req, res) => {
     const payload = ticket.getPayload();
     const email = payload.email.toLowerCase();
 
+    // First check if it's an admin or teacher in our database
+    const user = await User.findOne({ email });
+    if (user && (user.role === "admin" || user.role === "teacher")) {
+      // Sign token
+      const jwtToken = jwt.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+      res.cookie("adminToken", jwtToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+      return res.json({ success: true, role: user.role, email: user.email });
+    }
+
     // Check if it's a student trying to log in for feedback
     if (email.endsWith("@chitkara.edu.in")) {
       // It's a student. Return success. The frontend will set sessionStorage.
       return res.json({ success: true, role: "student", email });
     }
 
-    // Otherwise, check if it's an admin
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(403).json({ error: "Access denied. Not an admin." });
-    }
-
-    // Sign admin token
-    const jwtToken = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" });
-    res.cookie("adminToken", jwtToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
-    res.json({ success: true, role: "admin", email: user.email });
+    return res.status(403).json({ error: "Access denied. Not an admin or a student." });
   } catch (err) {
     res.status(401).json({ error: "Invalid Google Token" });
   }
 });
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
-  res.json({ email: req.user.email });
+  res.json({ email: req.user.email, role: req.user.role });
 });
 
 // Get all feedbacks
@@ -189,8 +241,9 @@ app.post("/api/feedbacks", async (req, res) => {
 });
 
 // Delete a feedback
-app.delete("/api/feedbacks/:id", async (req, res) => {
+app.delete("/api/feedbacks/:id", requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Only admins can delete feedback." });
     await Feedback.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (error) {
@@ -199,8 +252,9 @@ app.delete("/api/feedbacks/:id", async (req, res) => {
 });
 
 // Clear all feedbacks (for demo purposes)
-app.delete("/api/feedbacks", async (req, res) => {
+app.delete("/api/feedbacks", requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Only admins can clear feedback." });
     await Feedback.deleteMany({});
     res.json({ success: true });
   } catch (error) {

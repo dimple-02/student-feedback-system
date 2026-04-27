@@ -19,6 +19,10 @@ const feedbackSchema = new mongoose.Schema({
     min: 1,
     max: 5,
   },
+  role: {
+    type: String,
+    default: "student",
+  }
 }, { timestamps: true });
 
 export default mongoose.model("Feedback", feedbackSchema);

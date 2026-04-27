@@ -13,10 +13,18 @@
       <span>Email</span>
       <input id="studentLoginEmail" type="email" placeholder="student@chitkara.edu.in" required />
     </label>
+    
+    <label class="field">
+      <span>Password</span>
+      <input id="studentLoginPassword" type="password" placeholder="Enter your password" required />
+    </label>
 
     <p class="error-text" id="studentLoginError" hidden></p>
 
-    <button class="button" type="submit" style="margin-bottom: 1rem;">Continue with Email</button>
+    <button class="button" type="submit" style="margin-bottom: 0.5rem;">Log in</button>
+    <div style="text-align: center; margin-bottom: 1rem;">
+      <a href="/student/signup" class="muted" style="font-size: 0.875rem; text-decoration: underline;">Don't have an account? Register here</a>
+    </div>
     
     <div style="display: flex; align-items: center; justify-content: center; margin: 1rem 0;">
       <span style="flex: 1; border-bottom: 1px solid var(--border-color);"></span>

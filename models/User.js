@@ -9,8 +9,18 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    // Password may not be required if added manually without one (e.g. for Google OAuth admins)
+    required: false,
   },
+  role: {
+    type: String,
+    enum: ["student", "teacher", "admin"],
+    default: "student",
+  },
+  profilePic: {
+    type: String,
+    default: "",
+  }
 }, { timestamps: true });
 
 export default mongoose.model("User", userSchema);

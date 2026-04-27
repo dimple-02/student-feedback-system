@@ -180,13 +180,7 @@ const initLogin = async () => {
   const emailInput = document.getElementById("loginEmail");
   const passwordInput = document.getElementById("loginPassword");
   const error = document.getElementById("loginError");
-  const goSetupButton = document.getElementById("goSetupButton");
 
-  if (goSetupButton) {
-    goSetupButton.addEventListener("click", () => {
-      window.location.href = "/admin/setup";
-    });
-  }
 
   if (!form || !emailInput || !passwordInput || !error) return;
 
@@ -225,28 +219,98 @@ const initLogin = async () => {
 const initStudentLogin = () => {
   const form = document.getElementById("studentLoginForm");
   const emailInput = document.getElementById("studentLoginEmail");
+  const passwordInput = document.getElementById("studentLoginPassword");
   const error = document.getElementById("studentLoginError");
 
-  if (!form || !emailInput || !error) return;
+  if (!form || !emailInput || !passwordInput || !error) return;
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.hidden = true;
 
     const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
 
-    if (!email.endsWith("@chitkara.edu.in")) {
-      error.textContent = "You must use a valid @chitkara.edu.in email address to give feedback.";
+    try {
+      const res = await fetch("/api/auth/student-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        error.textContent = data.error || "Login failed.";
+        error.hidden = false;
+        return;
+      }
+
+      // Save student auth state
+      sessionStorage.setItem("studentAuth", "true");
+      window.location.href = "/feedback";
+    } catch (err) {
+      error.textContent = "Server error. Try again.";
+      error.hidden = false;
+    }
+  });
+
+  initializeGoogleSignIn();
+};
+
+const initStudentSignup = () => {
+  const form = document.getElementById("studentSignupForm");
+  const emailInput = document.getElementById("studentSignupEmail");
+  const passwordInput = document.getElementById("studentSignupPassword");
+  const picInput = document.getElementById("studentSignupPic");
+  const error = document.getElementById("studentSignupError");
+  const success = document.getElementById("studentSignupSuccess");
+
+  if (!form || !emailInput || !passwordInput || !error || !success) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    success.hidden = true;
+
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+
+    if (password.length < 6) {
+      error.textContent = "Password must be at least 6 characters.";
       error.hidden = false;
       return;
     }
 
-    // Save student auth state
-    sessionStorage.setItem("studentAuth", "true");
-    window.location.href = "/feedback";
-  });
+    const formData = new FormData();
+    formData.append("email", email);
+    formData.append("password", password);
+    if (picInput && picInput.files[0]) {
+      formData.append("profilePic", picInput.files[0]);
+    }
 
-  initializeGoogleSignIn();
+    try {
+      const res = await fetch("/api/auth/student-signup", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        error.textContent = data.error || "Signup failed.";
+        error.hidden = false;
+        return;
+      }
+
+      success.textContent = "Account created successfully. You can now log in.";
+      success.hidden = false;
+      form.reset();
+    } catch (err) {
+      error.textContent = "Server error. Try again.";
+      error.hidden = false;
+    }
+  });
 };
 
 const initializeGoogleSignIn = () => {
@@ -311,68 +375,10 @@ const initializeGoogleSignIn = () => {
   }
 };
 
-const initAdminSetup = () => {
-  const form = document.getElementById("adminSetupForm");
-  const emailInput = document.getElementById("setupEmail");
-  const passwordInput = document.getElementById("setupPassword");
-  const error = document.getElementById("setupError");
-  const success = document.getElementById("setupSuccess");
-  const back = document.getElementById("backToLoginButton");
 
-  if (back) {
-    back.addEventListener("click", () => {
-      window.location.href = "/admin/login";
-    });
-  }
 
-  if (!form || !emailInput || !passwordInput || !error || !success) return;
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    error.hidden = true;
-    success.hidden = true;
-
-    const email = emailInput.value.trim().toLowerCase();
-    const password = passwordInput.value;
-
-    if (!email) {
-      error.textContent = "Please enter an email.";
-      error.hidden = false;
-      return;
-    }
-
-    if (password.length < 6) {
-      error.textContent = "Password must be at least 6 characters.";
-      error.hidden = false;
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/auth/setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        error.textContent = data.error || "Setup failed.";
-        error.hidden = false;
-        return;
-      }
-
-      success.textContent = "Admin account created. You can log in now.";
-      success.hidden = false;
-      form.reset();
-    } catch (err) {
-      error.textContent = "Server error. Try again.";
-      error.hidden = false;
-    }
-  });
-};
-
-const createFeedbackListItem = (item) => {
+const createFeedbackListItem = (item, userRole) => {
+  const deleteBtn = userRole === "admin" ? `<button class="button danger" type="button" data-delete-id="${item.id}">Delete</button>` : "";
   return `
     <div class="feedback-card" data-id="${item.id}">
       <div class="feedback-head">
@@ -383,12 +389,15 @@ const createFeedbackListItem = (item) => {
         <span class="pill">${item.rating} / 5</span>
       </div>
       <p class="feedback-message">${escapeHtml(item.message)}</p>
-      <button class="button danger" type="button" data-delete-id="${item.id}">Delete</button>
+      ${deleteBtn}
     </div>
   `;
 };
 
 const initFeedbackPage = async () => {
+  const user = await getStoredUser();
+  const userRole = user?.role || "admin";
+
   const form = document.getElementById("feedbackForm");
   const courseInput = document.getElementById("feedbackCourse");
   const messageInput = document.getElementById("feedbackMessage");
@@ -500,7 +509,7 @@ const initFeedbackPage = async () => {
       return;
     }
 
-    list.innerHTML = filtered.map(createFeedbackListItem).join("");
+    list.innerHTML = filtered.map(item => createFeedbackListItem(item, userRole)).join("");
 
     list.querySelectorAll("[data-delete-id]").forEach((button) => {
       button.addEventListener("click", async () => {
@@ -563,6 +572,11 @@ const initFeedbackPage = async () => {
     const clearAllButton = document.getElementById("clearAllFeedbackButton");
     const clearFiltersButton = document.getElementById("clearFiltersButton");
 
+    if (userRole !== "admin") {
+      if (seedButton) seedButton.style.display = "none";
+      if (clearAllButton) clearAllButton.style.display = "none";
+    }
+
     if (exportButton) {
       exportButton.addEventListener("click", () => {
         if (feedbacks.length === 0) {
@@ -622,6 +636,9 @@ const initFeedbackPage = async () => {
 };
 
 const initDashboard = async () => {
+  const user = await getStoredUser();
+  const userRole = user?.role || "admin";
+
   const getSummary = async () => {
     const feedbacks = await getFeedbacks();
     const total = feedbacks.length;
@@ -695,6 +712,11 @@ const initDashboard = async () => {
 
   const seedButton = document.getElementById("dashboardSeedButton");
   const clearAllButton = document.getElementById("dashboardClearAllButton");
+
+  if (userRole !== "admin") {
+    if (seedButton) seedButton.style.display = "none";
+    if (clearAllButton) clearAllButton.style.display = "none";
+  }
 
   if (seedButton) {
     seedButton.addEventListener("click", async () => {
@@ -937,8 +959,9 @@ const initPage = async () => {
   const page = document.body.dataset.page;
 
   if (page === "student-login") initStudentLogin();
+  if (page === "student-signup") initStudentSignup();
   if (page === "login") initLogin();
-  if (page === "admin-setup") initAdminSetup();
+
   if (page === "feedback-student") {
     if (!sessionStorage.getItem("studentAuth")) {
       window.location.href = "/";
