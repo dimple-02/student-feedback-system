@@ -2,105 +2,88 @@ const USERS_KEY = "users";
 const USER_KEY = "user";
 const FEEDBACKS_KEY = "feedbacks";
 
-const getStoredUsers = () => {
-  const raw = localStorage.getItem(USERS_KEY);
-  if (!raw) return [];
+const getStoredUser = async () => {
   try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveUsers = (users) => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-};
-
-const getStoredUser = () => {
-  const raw = localStorage.getItem(USER_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
+    const res = await fetch("/api/auth/me");
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
     return null;
   }
 };
 
-const saveCurrentUser = (user) => {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-};
-
-const clearCurrentUser = () => {
-  localStorage.removeItem(USER_KEY);
-};
-
-const getFeedbacks = () => {
-  const raw = localStorage.getItem(FEEDBACKS_KEY);
-  if (!raw) return [];
+const getFeedbacks = async () => {
   try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const res = await fetch("/api/feedbacks");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map(item => ({ ...item, id: item._id }));
   } catch {
     return [];
   }
 };
 
-const saveFeedbacks = (feedbacks) => {
-  localStorage.setItem(FEEDBACKS_KEY, JSON.stringify(feedbacks));
+const saveFeedback = async (feedbackData) => {
+  try {
+    await fetch("/api/feedbacks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(feedbackData)
+    });
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-const clearFeedbacks = () => {
-  localStorage.removeItem(FEEDBACKS_KEY);
+const deleteFeedback = async (id) => {
+  try {
+    await fetch(`/api/feedbacks/${id}`, { method: "DELETE" });
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-const seedFeedbacks = () => {
+const clearFeedbacks = async () => {
+  try {
+    await fetch("/api/feedbacks", { method: "DELETE" });
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const seedFeedbacks = async () => {
   const seed = [
     {
-      id: Date.now() - 600000,
-      name: "Anonymous",
       course: "Math 201",
       message: "Clear examples, pacing felt just right.",
       rating: 5,
-      createdAt: new Date(Date.now() - 600000).toISOString()
     },
     {
-      id: Date.now() - 420000,
-      name: "Anonymous",
       course: "History 110",
       message: "Loved the discussion prompts, more time for Q&A would help.",
       rating: 4,
-      createdAt: new Date(Date.now() - 420000).toISOString()
     },
     {
-      id: Date.now() - 280000,
-      name: "Anonymous",
       course: "Biology 150",
       message: "Labs are engaging, wish the slides were posted earlier.",
       rating: 4,
-      createdAt: new Date(Date.now() - 280000).toISOString()
     },
     {
-      id: Date.now() - 180000,
-      name: "Anonymous",
       course: "Math 201",
       message: "Challenging but supportive. The review sheets help a lot.",
       rating: 5,
-      createdAt: new Date(Date.now() - 180000).toISOString()
     },
     {
-      id: Date.now() - 90000,
-      name: "Anonymous",
       course: "Chemistry 101",
       message: "Would love more real-world examples in lectures.",
       rating: 3,
-      createdAt: new Date(Date.now() - 90000).toISOString()
     }
   ];
 
-  saveFeedbacks(seed);
-  return seed;
+  for (const item of seed) {
+    await saveFeedback(item);
+  }
+  return await getFeedbacks();
 };
 
 const exportFeedbacksToCsv = (feedbacks) => {
@@ -168,19 +151,8 @@ const markActiveNav = () => {
   });
 };
 
-const ensureAdminAuth = () => {
-  const page = document.body.dataset.page;
-  const protectedPages = ["dashboard", "feedback-admin", "analytics", "profile"];
-  if (!protectedPages.includes(page)) return;
-
-  const user = getStoredUser();
-  if (!user) {
-    window.location.href = "/admin/login";
-  }
-};
-
-const initNavbar = () => {
-  const user = getStoredUser();
+const initNavbar = async () => {
+  const user = await getStoredUser();
   const navUser = document.getElementById("navUserEmail");
   if (navUser) {
     navUser.textContent = user?.email || "Admin";
@@ -188,8 +160,8 @@ const initNavbar = () => {
 
   const logoutButton = document.getElementById("logoutButton");
   if (logoutButton) {
-    logoutButton.addEventListener("click", () => {
-      clearCurrentUser();
+    logoutButton.addEventListener("click", async () => {
+      await fetch("/api/auth/logout", { method: "POST" });
       window.location.href = "/admin/login";
     });
   }
@@ -197,8 +169,9 @@ const initNavbar = () => {
   markActiveNav();
 };
 
-const initLogin = () => {
-  if (getStoredUser()) {
+const initLogin = async () => {
+  const user = await getStoredUser();
+  if (user) {
     window.location.href = "/admin";
     return;
   }
@@ -207,78 +180,101 @@ const initLogin = () => {
   const emailInput = document.getElementById("loginEmail");
   const passwordInput = document.getElementById("loginPassword");
   const error = document.getElementById("loginError");
-  const goSetupButton = document.getElementById("goSetupButton");
 
-  if (goSetupButton) {
-    goSetupButton.addEventListener("click", () => {
-      window.location.href = "/admin/setup";
-    });
-  }
 
   if (!form || !emailInput || !passwordInput || !error) return;
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.hidden = true;
 
-    const users = getStoredUsers();
-    const normalizedEmail = emailInput.value.trim().toLowerCase();
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
 
-    if (!users.length) {
-      error.textContent = "No admin accounts found on this device. Contact support.";
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        error.textContent = data.error || "Login failed.";
+        error.hidden = false;
+        return;
+      }
+
+      window.location.href = "/admin";
+    } catch (err) {
+      error.textContent = "Server error. Try again.";
       error.hidden = false;
-      return;
     }
-
-    const user = users.find((item) => (item.email || "").toLowerCase() === normalizedEmail);
-
-    if (!user) {
-      error.textContent = "No admin account for that email. Contact support.";
-      error.hidden = false;
-      return;
-    }
-
-    if (user.password !== passwordInput.value) {
-      error.textContent = "Incorrect password. Try again.";
-      error.hidden = false;
-      return;
-    }
-
-    saveCurrentUser(user);
-    window.location.href = "/admin";
   });
+
+  initializeGoogleSignIn();
 };
 
-const initAdminSetup = () => {
-  const form = document.getElementById("adminSetupForm");
-  const emailInput = document.getElementById("setupEmail");
-  const passwordInput = document.getElementById("setupPassword");
-  const error = document.getElementById("setupError");
-  const success = document.getElementById("setupSuccess");
-  const back = document.getElementById("backToLoginButton");
+const initStudentLogin = () => {
+  const form = document.getElementById("studentLoginForm");
+  const emailInput = document.getElementById("studentLoginEmail");
+  const passwordInput = document.getElementById("studentLoginPassword");
+  const error = document.getElementById("studentLoginError");
 
-  if (back) {
-    back.addEventListener("click", () => {
-      window.location.href = "/admin/login";
-    });
-  }
+  if (!form || !emailInput || !passwordInput || !error) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+
+    try {
+      const res = await fetch("/api/auth/student-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        error.textContent = data.error || "Login failed.";
+        error.hidden = false;
+        return;
+      }
+
+      // Save student auth state
+      sessionStorage.setItem("studentAuth", "true");
+      window.location.href = "/feedback";
+    } catch (err) {
+      error.textContent = "Server error. Try again.";
+      error.hidden = false;
+    }
+  });
+
+  initializeGoogleSignIn();
+};
+
+const initStudentSignup = () => {
+  const form = document.getElementById("studentSignupForm");
+  const emailInput = document.getElementById("studentSignupEmail");
+  const passwordInput = document.getElementById("studentSignupPassword");
+  const picInput = document.getElementById("studentSignupPic");
+  const error = document.getElementById("studentSignupError");
+  const success = document.getElementById("studentSignupSuccess");
 
   if (!form || !emailInput || !passwordInput || !error || !success) return;
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.hidden = true;
     success.hidden = true;
 
-    const users = getStoredUsers();
-    const normalizedEmail = emailInput.value.trim().toLowerCase();
+    const email = emailInput.value.trim().toLowerCase();
     const password = passwordInput.value;
-
-    if (!normalizedEmail) {
-      error.textContent = "Please enter an email.";
-      error.hidden = false;
-      return;
-    }
 
     if (password.length < 6) {
       error.textContent = "Password must be at least 6 characters.";
@@ -286,22 +282,103 @@ const initAdminSetup = () => {
       return;
     }
 
-    const exists = users.some((user) => user.email === normalizedEmail);
-    if (exists) {
-      error.textContent = "An admin account with this email already exists.";
-      error.hidden = false;
-      return;
+    const formData = new FormData();
+    formData.append("email", email);
+    formData.append("password", password);
+    if (picInput && picInput.files[0]) {
+      formData.append("profilePic", picInput.files[0]);
     }
 
-    users.push({ email: normalizedEmail, password });
-    saveUsers(users);
-    success.textContent = "Admin account created. You can log in now.";
-    success.hidden = false;
-    form.reset();
+    try {
+      const res = await fetch("/api/auth/student-signup", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        error.textContent = data.error || "Signup failed.";
+        error.hidden = false;
+        return;
+      }
+
+      success.textContent = "Account created successfully. You can now log in.";
+      success.hidden = false;
+      form.reset();
+    } catch (err) {
+      error.textContent = "Server error. Try again.";
+      error.hidden = false;
+    }
   });
 };
 
-const createFeedbackListItem = (item) => {
+const initializeGoogleSignIn = () => {
+  const googleButton = document.getElementById("googleSignInButton");
+  const meta = document.querySelector('meta[name="google-client-id"]');
+  if (!googleButton || !meta) return;
+
+  const clientId = meta.getAttribute("content");
+  if (!clientId || clientId === "YOUR_GOOGLE_CLIENT_ID_HERE") return;
+
+  window.handleGoogleCallback = async (response) => {
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: response.credential })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error || "Google login failed.");
+        return;
+      }
+
+      if (data.role === "student") {
+        sessionStorage.setItem("studentAuth", "true");
+        window.location.href = "/feedback";
+      } else {
+        window.location.href = "/admin";
+      }
+    } catch (err) {
+      showToast("Server error during Google login.");
+    }
+  };
+
+  if (window.google && window.google.accounts) {
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: window.handleGoogleCallback
+    });
+    window.google.accounts.id.renderButton(googleButton, {
+      theme: "outline",
+      size: "large",
+      width: "100%"
+    });
+  } else {
+    // If google script loads later
+    window.onload = () => {
+      if (window.google && window.google.accounts) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: window.handleGoogleCallback
+        });
+        window.google.accounts.id.renderButton(googleButton, {
+          theme: "outline",
+          size: "large",
+          width: "100%"
+        });
+      }
+    };
+  }
+};
+
+
+
+const createFeedbackListItem = (item, userRole) => {
+  const deleteBtn = userRole === "admin" ? `<button class="button danger" type="button" data-delete-id="${item.id}">Delete</button>` : "";
   return `
     <div class="feedback-card" data-id="${item.id}">
       <div class="feedback-head">
@@ -312,12 +389,15 @@ const createFeedbackListItem = (item) => {
         <span class="pill">${item.rating} / 5</span>
       </div>
       <p class="feedback-message">${escapeHtml(item.message)}</p>
-      <button class="button danger" type="button" data-delete-id="${item.id}">Delete</button>
+      ${deleteBtn}
     </div>
   `;
 };
 
-const initFeedbackPage = () => {
+const initFeedbackPage = async () => {
+  const user = await getStoredUser();
+  const userRole = user?.role || "admin";
+
   const form = document.getElementById("feedbackForm");
   const courseInput = document.getElementById("feedbackCourse");
   const messageInput = document.getElementById("feedbackMessage");
@@ -333,7 +413,7 @@ const initFeedbackPage = () => {
       .join("");
   }
 
-  let feedbacks = getFeedbacks();
+  let feedbacks = await getFeedbacks();
 
   const sortSelect = document.getElementById("feedbackSort");
   const courseFilter = document.getElementById("filterCourse");
@@ -429,13 +509,13 @@ const initFeedbackPage = () => {
       return;
     }
 
-    list.innerHTML = filtered.map(createFeedbackListItem).join("");
+    list.innerHTML = filtered.map(item => createFeedbackListItem(item, userRole)).join("");
 
     list.querySelectorAll("[data-delete-id]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const id = Number(button.getAttribute("data-delete-id"));
-        feedbacks = feedbacks.filter((item) => item.id !== id);
-        saveFeedbacks(feedbacks);
+      button.addEventListener("click", async () => {
+        const id = button.getAttribute("data-delete-id");
+        await deleteFeedback(id);
+        feedbacks = await getFeedbacks();
         renderFeedbackList();
         showToast("Feedback removed.");
       });
@@ -443,7 +523,7 @@ const initFeedbackPage = () => {
   };
 
   if (form && courseInput && messageInput && ratingSelect) {
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const course = courseInput.value.trim();
@@ -455,17 +535,14 @@ const initFeedbackPage = () => {
         return;
       }
 
-      const newFeedback = {
-        id: Date.now(),
-        name: "Anonymous",
-        course,
-        message,
-        rating,
-        createdAt: new Date().toISOString()
-      };
+      if (course.includes("@")) {
+        showToast("Please enter a valid course name, not an email address.");
+        return;
+      }
 
-      feedbacks = [newFeedback, ...feedbacks];
-      saveFeedbacks(feedbacks);
+      await saveFeedback({ course, message, rating });
+      feedbacks = await getFeedbacks();
+      
       showToast("Feedback saved successfully.");
       form.reset();
       ratingSelect.value = "5";
@@ -495,6 +572,11 @@ const initFeedbackPage = () => {
     const clearAllButton = document.getElementById("clearAllFeedbackButton");
     const clearFiltersButton = document.getElementById("clearFiltersButton");
 
+    if (userRole !== "admin") {
+      if (seedButton) seedButton.style.display = "none";
+      if (clearAllButton) clearAllButton.style.display = "none";
+    }
+
     if (exportButton) {
       exportButton.addEventListener("click", () => {
         if (feedbacks.length === 0) {
@@ -515,20 +597,20 @@ const initFeedbackPage = () => {
     }
 
     if (seedButton) {
-      seedButton.addEventListener("click", () => {
-        feedbacks = seedFeedbacks();
+      seedButton.addEventListener("click", async () => {
+        feedbacks = await seedFeedbacks();
         renderFeedbackList();
         showToast("Demo feedback added.");
       });
     }
 
     if (clearAllButton) {
-      clearAllButton.addEventListener("click", () => {
+      clearAllButton.addEventListener("click", async () => {
         if (!window.confirm("Clear all feedback? This cannot be undone.")) {
           return;
         }
 
-        clearFeedbacks();
+        await clearFeedbacks();
         feedbacks = [];
         renderFeedbackList();
         showToast("All feedback cleared.");
@@ -553,9 +635,12 @@ const initFeedbackPage = () => {
   }
 };
 
-const initDashboard = () => {
-  const getSummary = () => {
-    const feedbacks = getFeedbacks();
+const initDashboard = async () => {
+  const user = await getStoredUser();
+  const userRole = user?.role || "admin";
+
+  const getSummary = async () => {
+    const feedbacks = await getFeedbacks();
     const total = feedbacks.length;
     const average =
       total === 0 ? "0" : (feedbacks.reduce((sum, item) => sum + item.rating, 0) / total).toFixed(1);
@@ -580,8 +665,8 @@ const initDashboard = () => {
     return { feedbacks, total, average, uniqueCourses, last7, topCourses, recent };
   };
 
-  const render = () => {
-    const { total, average, uniqueCourses, last7, topCourses, recent } = getSummary();
+  const render = async () => {
+    const { total, average, uniqueCourses, last7, topCourses, recent } = await getSummary();
 
     setText("dashboardAvgRating", average);
     setText("dashboardAvgSubtitle", `Across ${total} responses`);
@@ -628,26 +713,31 @@ const initDashboard = () => {
   const seedButton = document.getElementById("dashboardSeedButton");
   const clearAllButton = document.getElementById("dashboardClearAllButton");
 
+  if (userRole !== "admin") {
+    if (seedButton) seedButton.style.display = "none";
+    if (clearAllButton) clearAllButton.style.display = "none";
+  }
+
   if (seedButton) {
-    seedButton.addEventListener("click", () => {
-      seedFeedbacks();
-      render();
+    seedButton.addEventListener("click", async () => {
+      await seedFeedbacks();
+      await render();
       showToast("Demo feedback added.");
     });
   }
 
   if (clearAllButton) {
-    clearAllButton.addEventListener("click", () => {
+    clearAllButton.addEventListener("click", async () => {
       if (!window.confirm("Clear all feedback? This cannot be undone.")) {
         return;
       }
-      clearFeedbacks();
-      render();
+      await clearFeedbacks();
+      await render();
       showToast("All feedback cleared.");
     });
   }
 
-  render();
+  await render();
 };
 
 const createSvgElement = (tag, attrs = {}) => {
@@ -658,8 +748,8 @@ const createSvgElement = (tag, attrs = {}) => {
   return element;
 };
 
-const initAnalytics = () => {
-  const feedbacks = getFeedbacks();
+const initAnalytics = async () => {
+  const feedbacks = await getFeedbacks();
   const total = feedbacks.length;
   const average = total === 0 ? "0" : (feedbacks.reduce((sum, item) => sum + item.rating, 0) / total).toFixed(1);
   const ratingCount = [5, 4, 3, 2, 1].map((rating) => ({
@@ -788,9 +878,9 @@ const initAnalytics = () => {
   }
 };
 
-const initProfile = () => {
-  const user = getStoredUser();
-  const feedbacks = getFeedbacks();
+const initProfile = async () => {
+  const user = await getStoredUser();
+  const feedbacks = await getFeedbacks();
   const recent = feedbacks.slice(-3).reverse();
 
   setText("profileEmail", user?.email || "Admin");
@@ -835,8 +925,9 @@ const initContact = () => {
   });
 };
 
-const initNotFound = () => {
-  const isAuthed = Boolean(getStoredUser());
+const initNotFound = async () => {
+  const user = await getStoredUser();
+  const isAuthed = Boolean(user);
 
   setText(
     "notFoundHint",
@@ -862,18 +953,26 @@ const initNotFound = () => {
   }
 };
 
-const initPage = () => {
-  ensureAdminAuth();
-  initNavbar();
+const initPage = async () => {
+  await initNavbar();
 
   const page = document.body.dataset.page;
 
+  if (page === "student-login") initStudentLogin();
+  if (page === "student-signup") initStudentSignup();
   if (page === "login") initLogin();
-  if (page === "admin-setup") initAdminSetup();
-  if (page === "feedback-student" || page === "feedback-admin") initFeedbackPage();
-  if (page === "dashboard") initDashboard();
-  if (page === "analytics") initAnalytics();
-  if (page === "profile") initProfile();
+
+  if (page === "feedback-student") {
+    if (!sessionStorage.getItem("studentAuth")) {
+      window.location.href = "/";
+      return;
+    }
+    await initFeedbackPage();
+  }
+  if (page === "feedback-admin") await initFeedbackPage();
+  if (page === "dashboard") await initDashboard();
+  if (page === "analytics") await initAnalytics();
+  if (page === "profile") await initProfile();
   if (page === "contact") initContact();
   if (page === "not-found") initNotFound();
 };

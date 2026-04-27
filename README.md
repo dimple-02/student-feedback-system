@@ -13,7 +13,7 @@ Anonymous student feedback with an admin-only analytics portal, served by Expres
 - `/` - student feedback form
 - `/contact` - contact form
 - `/admin/login` - admin login
-- `/admin/setup` - create local admin account
+
 - `/admin` - admin overview
 - `/admin/feedback` - feedback review and filters
 - `/admin/analytics` - analytics visualizations
