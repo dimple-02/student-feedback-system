@@ -18,7 +18,10 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/student-feedback-system";
+const JWT_SECRET = process.env.JWT_SECRET || "dev-jwt-secret";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID || undefined);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -32,7 +35,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(MONGO_URI)
   .then(() => console.log("Connected to MongoDB"))
   .catch(err => console.error("MongoDB connection error:", err));
 
@@ -46,7 +49,7 @@ const renderPage = (res, view, options = {}, status = 200) => {
   return res.status(status).render(`pages/${view}`, {
     title: "Student Feedback System",
     currentPath: "",
-    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    googleClientId: GOOGLE_CLIENT_ID,
     ...options
   });
 };
@@ -77,7 +80,7 @@ const requireAuth = (req, res, next) => {
   const token = req.cookies.adminToken;
   if (!token) return res.redirect("/admin/login");
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch (err) {
@@ -164,7 +167,7 @@ app.post("/api/auth/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
     res.cookie("adminToken", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
     res.json({ success: true, email: user.email, role: user.role });
   } catch (err) {
@@ -197,7 +200,7 @@ app.post("/api/auth/google", async (req, res) => {
     const user = await User.findOne({ email });
     if (user && (user.role === "admin" || user.role === "teacher")) {
       // Sign token
-      const jwtToken = jwt.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+      const jwtToken = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
       res.cookie("adminToken", jwtToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
       return res.json({ success: true, role: user.role, email: user.email });
     }
