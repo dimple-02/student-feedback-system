@@ -6,11 +6,13 @@ Anonymous student feedback with an admin-only analytics portal, served by Expres
 - Server-rendered routes with EJS
 - Anonymous feedback submission form for students
 - Admin dashboard, feedback review, analytics, and profile pages
-- Local admin setup/login flow in browser storage
+- Email/password login for students and admin/teacher users
+- Google Sign-In for student and admin/teacher login flows
 - CSV export, demo seeding, and filter controls
 
 ## Routes
-- `/` - student feedback form
+- `/` - student login
+- `/feedback` - student feedback form (authenticated student only)
 - `/contact` - contact form
 - `/admin/login` - admin login
 
@@ -21,9 +23,19 @@ Anonymous student feedback with an admin-only analytics portal, served by Expres
 - `*` - custom not found page
 
 ## Local Storage Keys
-- `users` - local admin accounts
-- `user` - current admin session
-- `feedbacks` - anonymous feedback entries
+- `feedbacks` - anonymous feedback entries cache used by the UI
+
+## Environment Variables
+Create a `.env` file in the project root:
+
+```bash
+MONGO_URI=mongodb://127.0.0.1:27017/student-feedback-system
+JWT_SECRET=replace-with-a-strong-secret
+GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+```
+
+Google Sign-In requires a Web OAuth Client from Google Cloud Console.
+Add your local origin (for example `http://localhost:3000`) to Authorized JavaScript origins.
 
 ## Run Locally
 ```bash

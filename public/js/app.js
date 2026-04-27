@@ -12,6 +12,16 @@ const getStoredUser = async () => {
   }
 };
 
+const getStoredStudent = async () => {
+  try {
+    const res = await fetch("/api/auth/student-me");
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
 const getFeedbacks = async () => {
   try {
     const res = await fetch("/api/feedbacks");
@@ -216,7 +226,13 @@ const initLogin = async () => {
   initializeGoogleSignIn();
 };
 
-const initStudentLogin = () => {
+const initStudentLogin = async () => {
+  const student = await getStoredStudent();
+  if (student) {
+    window.location.href = "/feedback";
+    return;
+  }
+
   const form = document.getElementById("studentLoginForm");
   const emailInput = document.getElementById("studentLoginEmail");
   const passwordInput = document.getElementById("studentLoginPassword");
@@ -246,8 +262,6 @@ const initStudentLogin = () => {
         return;
       }
 
-      // Save student auth state
-      sessionStorage.setItem("studentAuth", "true");
       window.location.href = "/feedback";
     } catch (err) {
       error.textContent = "Server error. Try again.";
@@ -337,7 +351,6 @@ const initializeGoogleSignIn = () => {
       }
 
       if (data.role === "student") {
-        sessionStorage.setItem("studentAuth", "true");
         window.location.href = "/feedback";
       } else {
         window.location.href = "/admin";
@@ -963,7 +976,8 @@ const initPage = async () => {
   if (page === "login") initLogin();
 
   if (page === "feedback-student") {
-    if (!sessionStorage.getItem("studentAuth")) {
+    const student = await getStoredStudent();
+    if (!student) {
       window.location.href = "/";
       return;
     }

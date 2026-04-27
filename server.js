@@ -22,6 +22,8 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/student-fe
 const JWT_SECRET = process.env.JWT_SECRET || "dev-jwt-secret";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID || undefined);
+const ADMIN_TOKEN_COOKIE = "adminToken";
+const STUDENT_TOKEN_COOKIE = "studentToken";
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -54,6 +56,12 @@ const renderPage = (res, view, options = {}, status = 200) => {
   });
 };
 
+const authCookieOptions = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production"
+};
+
 app.get("/", (req, res) => {
   renderPage(res, "student-login", { currentPath: "/", pageKey: "student-login" });
 });
@@ -62,7 +70,20 @@ app.get("/student/signup", (req, res) => {
   renderPage(res, "student-signup", { currentPath: "/student/signup", pageKey: "student-signup" });
 });
 
-app.get("/feedback", (req, res) => {
+const requireStudentAuth = (req, res, next) => {
+  const token = req.cookies[STUDENT_TOKEN_COOKIE];
+  if (!token) return res.redirect("/");
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== "student") return res.redirect("/");
+    req.student = decoded;
+    next();
+  } catch {
+    res.redirect("/");
+  }
+};
+
+app.get("/feedback", requireStudentAuth, (req, res) => {
   renderPage(res, "feedback", { currentPath: "/feedback", pageKey: "feedback-student" });
 });
 
@@ -77,7 +98,7 @@ app.get("/admin/login", (req, res) => {
 
 
 const requireAuth = (req, res, next) => {
-  const token = req.cookies.adminToken;
+  const token = req.cookies[ADMIN_TOKEN_COOKIE];
   if (!token) return res.redirect("/admin/login");
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -149,6 +170,9 @@ app.post("/api/auth/student-login", async (req, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
+    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
+    res.cookie(STUDENT_TOKEN_COOKIE, token, authCookieOptions);
+
     res.json({ success: true, role: "student", email: user.email });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -168,7 +192,7 @@ app.post("/api/auth/login", async (req, res) => {
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
     const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
-    res.cookie("adminToken", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    res.cookie(ADMIN_TOKEN_COOKIE, token, authCookieOptions);
     res.json({ success: true, email: user.email, role: user.role });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -176,13 +200,15 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 app.post("/api/auth/logout", (req, res) => {
-  res.clearCookie("adminToken");
+  res.clearCookie(ADMIN_TOKEN_COOKIE, authCookieOptions);
+  res.clearCookie(STUDENT_TOKEN_COOKIE, authCookieOptions);
   res.json({ success: true });
 });
 
 // A simple GET route so you can forcefully logout by visiting the URL
 app.get("/logout", (req, res) => {
-  res.clearCookie("adminToken");
+  res.clearCookie(ADMIN_TOKEN_COOKIE, authCookieOptions);
+  res.clearCookie(STUDENT_TOKEN_COOKIE, authCookieOptions);
   res.redirect("/admin/login");
 });
 
@@ -201,14 +227,25 @@ app.post("/api/auth/google", async (req, res) => {
     if (user && (user.role === "admin" || user.role === "teacher")) {
       // Sign token
       const jwtToken = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
-      res.cookie("adminToken", jwtToken, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+      res.cookie(ADMIN_TOKEN_COOKIE, jwtToken, authCookieOptions);
       return res.json({ success: true, role: user.role, email: user.email });
     }
 
     // Check if it's a student trying to log in for feedback
     if (email.endsWith("@chitkara.edu.in")) {
-      // It's a student. Return success. The frontend will set sessionStorage.
-      return res.json({ success: true, role: "student", email });
+      let studentUser = await User.findOne({ email });
+
+      if (!studentUser) {
+        studentUser = await User.create({ email, role: "student" });
+      }
+
+      if (studentUser.role !== "student") {
+        return res.status(403).json({ error: "Access denied for this account." });
+      }
+
+      const jwtToken = jwt.sign({ id: studentUser._id, email: studentUser.email, role: studentUser.role }, JWT_SECRET, { expiresIn: "1d" });
+      res.cookie(STUDENT_TOKEN_COOKIE, jwtToken, authCookieOptions);
+      return res.json({ success: true, role: "student", email: studentUser.email });
     }
 
     return res.status(403).json({ error: "Access denied. Not an admin or a student." });
@@ -219,6 +256,10 @@ app.post("/api/auth/google", async (req, res) => {
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
   res.json({ email: req.user.email, role: req.user.role });
+});
+
+app.get("/api/auth/student-me", requireStudentAuth, (req, res) => {
+  res.json({ email: req.student.email, role: req.student.role });
 });
 
 // Get all feedbacks
@@ -232,7 +273,7 @@ app.get("/api/feedbacks", async (req, res) => {
 });
 
 // Submit a new feedback
-app.post("/api/feedbacks", async (req, res) => {
+app.post("/api/feedbacks", requireStudentAuth, async (req, res) => {
   try {
     const { course, message, rating } = req.body;
     const newFeedback = new Feedback({ course, message, rating });

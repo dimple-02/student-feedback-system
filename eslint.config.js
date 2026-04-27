@@ -1,19 +1,20 @@
-import js from 'eslint/js'
-import globals from 'globals'
-import { defineConfig, globalIgnores } from 'eslint/config'
-
-export default defineConfig([
-  globalIgnores(['dist', 'node_modules']),
-  {
-    files: ['**/*.js'],
-    extends: [js.configs.recommended],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-      sourceType: 'module',
-    },
-    rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
-    },
-  },
-])
+import js from "@eslint/js";  
+import globals from "globals";  
+  
+export default [  
+  {  
+    ignores: ["dist", "node_modules"],  
+  },  
+  {  
+    files: ["**/*.js"],  
+    languageOptions: {  
+      ecmaVersion: 2020,  
+      globals: globals.browser,  
+      sourceType: "module",  
+    },  
+    rules: {  
+      ...js.configs.recommended.rules,  
+      "no-unused-vars": ["error", { varsIgnorePattern: "^[A-Z_]" }],  
+    },  
+  },  
+]; 
