@@ -6,8 +6,8 @@ Anonymous student feedback with an admin-only analytics portal, served by Expres
 - Server-rendered routes with EJS
 - Anonymous feedback submission form for students
 - Admin dashboard, feedback review, analytics, and profile pages
-- Email/password login for students and admin/teacher users
-- Google Sign-In for student and admin/teacher login flows
+- Email/password login for students and admin users
+- Google Sign-In for student and admin login flows
 - CSV export, demo seeding, and filter controls
 
 ## Routes

@@ -176,6 +176,14 @@ const initNavbar = async () => {
     });
   }
 
+  const studentLogoutButton = document.getElementById("studentLogoutButton");
+  if (studentLogoutButton) {
+    studentLogoutButton.addEventListener("click", async () => {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/";
+    });
+  }
+
   markActiveNav();
 };
 
@@ -419,6 +427,57 @@ const initFeedbackPage = async () => {
   const isAdminView = page === "feedback-admin";
 
   if (!isAdminView && (!form || !courseInput || !messageInput || !ratingSelect)) return;
+
+  // Handle student profile picture upload
+  if (!isAdminView) {
+    const profilePicInput = document.getElementById("studentProfilePicInput");
+    const uploadBtn = document.getElementById("studentUploadProfilePicBtn");
+    const uploadMsg = document.getElementById("studentUploadProfilePicMsg");
+    
+    if (uploadBtn && profilePicInput) {
+      uploadBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (!profilePicInput.files[0]) {
+          if (uploadMsg) {
+            uploadMsg.textContent = "Please select an image file";
+            uploadMsg.hidden = false;
+          }
+          return;
+        }
+        
+        const formData = new FormData();
+        formData.append("profilePic", profilePicInput.files[0]);
+        
+        try {
+          const res = await fetch("/api/auth/student-upload-pic", {
+            method: "POST",
+            body: formData
+          });
+          
+          const data = await res.json();
+          if (res.ok) {
+            if (uploadMsg) {
+              uploadMsg.textContent = "Profile picture updated successfully!";
+              uploadMsg.hidden = false;
+            }
+            profilePicInput.value = "";
+            // Reload to show the new picture
+            setTimeout(() => window.location.reload(), 1500);
+          } else {
+            if (uploadMsg) {
+              uploadMsg.textContent = data.error || "Upload failed";
+              uploadMsg.hidden = false;
+            }
+          }
+        } catch (err) {
+          if (uploadMsg) {
+            uploadMsg.textContent = "Error uploading image";
+            uploadMsg.hidden = false;
+          }
+        }
+      });
+    }
+  }
 
   if (ratingSelect) {
     ratingSelect.innerHTML = [5, 4, 3, 2, 1]

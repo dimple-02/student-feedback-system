@@ -44,6 +44,8 @@ mongoose.connect(MONGO_URI)
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, "public")));
+// Explicitly serve uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads"), { maxAge: "1d" }));
 app.use(express.json()); // Parse JSON bodies
 app.use(cookieParser()); // Parse cookies
 
@@ -83,8 +85,26 @@ const requireStudentAuth = (req, res, next) => {
   }
 };
 
-app.get("/feedback", requireStudentAuth, (req, res) => {
-  renderPage(res, "feedback", { currentPath: "/feedback", pageKey: "feedback-student" });
+app.get("/feedback", requireStudentAuth, async (req, res) => {
+  try {
+    console.log("Fetching student with ID:", req.student.id);
+    const student = await User.findById(req.student.id);
+    console.log("Student data:", student);
+    console.log("Profile pic:", student?.profilePic);
+    
+    renderPage(res, "feedback", { 
+      currentPath: "/feedback", 
+      pageKey: "feedback-student",
+      studentEmail: student?.email,
+      studentProfilePic: student?.profilePic
+    });
+  } catch (err) {
+    console.error("Error fetching student:", err);
+    renderPage(res, "feedback", { 
+      currentPath: "/feedback", 
+      pageKey: "feedback-student"
+    });
+  }
 });
 
 app.get("/contact", (req, res) => {
@@ -186,7 +206,7 @@ app.post("/api/auth/login", async (req, res) => {
     
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "Invalid credentials" });
-    if (user.role !== "admin" && user.role !== "teacher") return res.status(403).json({ error: "Access denied. Not an admin or teacher." });
+    if (user.role !== "admin") return res.status(403).json({ error: "Access denied. Not an admin." });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
@@ -222,9 +242,9 @@ app.post("/api/auth/google", async (req, res) => {
     const payload = ticket.getPayload();
     const email = payload.email.toLowerCase();
 
-    // First check if it's an admin or teacher in our database
+    // First check if it's an admin in our database
     const user = await User.findOne({ email });
-    if (user && (user.role === "admin" || user.role === "teacher")) {
+    if (user && user.role === "admin") {
       // Sign token
       const jwtToken = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "1d" });
       res.cookie(ADMIN_TOKEN_COOKIE, jwtToken, authCookieOptions);
@@ -254,12 +274,38 @@ app.post("/api/auth/google", async (req, res) => {
   }
 });
 
-app.get("/api/auth/me", requireAuth, (req, res) => {
-  res.json({ email: req.user.email, role: req.user.role });
+app.get("/api/auth/me", requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    res.json({ email: user?.email, role: user?.role, profilePic: user?.profilePic });
+  } catch (err) {
+    res.json({ email: req.user.email, role: req.user.role });
+  }
 });
 
-app.get("/api/auth/student-me", requireStudentAuth, (req, res) => {
-  res.json({ email: req.student.email, role: req.student.role });
+app.get("/api/auth/student-me", requireStudentAuth, async (req, res) => {
+  try {
+    const student = await User.findById(req.student.id);
+    res.json({ email: student?.email, role: student?.role, profilePic: student?.profilePic });
+  } catch (err) {
+    res.json({ email: req.student.email, role: req.student.role });
+  }
+});
+
+// Upload student profile picture
+app.post("/api/auth/student-upload-pic", requireStudentAuth, upload.single('profilePic'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    
+    const profilePic = `/uploads/${req.file.filename}`;
+    const student = await User.findByIdAndUpdate(req.student.id, { profilePic }, { new: true });
+    res.json({ success: true, profilePic: student.profilePic });
+  } catch (err) {
+    console.error("Error uploading profile picture:", err);
+    res.status(500).json({ error: "Failed to upload profile picture" });
+  }
 });
 
 // Get all feedbacks
