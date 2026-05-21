@@ -1,12 +1,11 @@
+import "dotenv/config";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
-import User from "./models/User.js";
-
-dotenv.config();
+import User from "../models/User.js";
 
 const cleanUpUsers = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/student-feedback-system";
+    await mongoose.connect(MONGO_URI);
     console.log("Connected to MongoDB for user cleanup.");
 
     const result = await User.deleteMany({

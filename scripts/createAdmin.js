@@ -1,19 +1,18 @@
+import "dotenv/config";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import dotenv from "dotenv";
-import User from "./models/User.js";
-
-dotenv.config();
+import User from "../models/User.js";
 
 const createAdmin = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/student-feedback-system";
+    await mongoose.connect(MONGO_URI);
     console.log("Connected to MongoDB.");
 
-    const email = "admin@chitkara.edu.in"; // Aap apna koi bhi email yahan daal sakte hain
+    const email = "admin@chitkara.edu.in";
     const password = "password123";
 
-    // Pehle check karte hain ki admin pehle se exist karta hai ya nahi
+    // Check if admin already exists
     let admin = await User.findOne({ email });
 
     if (admin) {
@@ -31,7 +30,6 @@ const createAdmin = async () => {
       console.log(`Email: ${email}`);
       console.log(`Password: ${password}`);
     }
-
   } catch (err) {
     console.error("Error creating admin:", err);
   } finally {
